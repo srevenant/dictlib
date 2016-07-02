@@ -42,6 +42,8 @@ Limitations:
 * reserves the prefix \f$\f for internal use (raises error)
 * because of namespace conflict problems, this is a deal breaker for universal use--you must be cautious on what keys are input.
 
+Examples:
+
     >>> test_dict = {"a":{"b":1,"ugly var!":2}, "c":3}
     >>> test_obj = Obj(**test_dict)
     >>> orig_obj = test_obj.copy() # referenced later
