@@ -1,0 +1,303 @@
+"""
+Dictionary Tools
+
+Copyright 2016 Brandon Gillespie
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+
+import copy
+import re
+
+__version__ = 1.0
+
+################################################################################
+def dig(obj, key):
+    """
+    Recursively pull from a dictionary, using dot notation.  See also: dig_get
+    >>> dig({"a":{"b":{"c":1}}}, "a.b.c")
+    1
+    """
+    array = key.split(".")
+    return _dig(obj, *array)
+
+def _dig(obj, *key):
+    """
+    Recursively lookup an item in a nested dictionary,
+    using an array of indexes
+
+    >>> _dig({"a":{"b":{"c":1}}}, "a", "b", "c")
+    1
+    """
+    if len(key) == 1:
+        return obj[key[0]]
+    return _dig(obj[key[0]], *key[1:])
+
+################################################################################
+def dig_get(obj, key, *default):
+    """
+    Recursively pull from a dictionary, using dot notation, with default value
+    instead of raised error (similar to dict.get()).
+
+    >>> dig_get({"a":{"b":{"c":1}}}, "a.b.d")
+    >>> dig_get({"a":{"b":{"c":1}}}, "a.b.d", 2)
+    2
+    """
+    array = key.split(".")
+    if default:
+        default = default[0]
+    else:
+        default = None
+    return _dig_get(obj, default, *array)
+
+def _dig_get(obj, default, *key):
+    """
+    Recursively lookup an item in a nested dictionary,
+    using an array of indexes
+
+    >>> _dig_get({"a":{"b":{"c":1}}}, 2, "a", "b", "d")
+    2
+    """
+    if len(key) == 1:
+        return obj.get(key[0], default)
+    return _dig_get(obj.get(key[0], {}), default, *key[1:])
+
+################################################################################
+def union(dict1, dict2):
+    """
+    Deep merge of dict2 into dict1.  May be dictionaries or dictobj's.
+    Values in dict2 will replace values in dict1 where they vary but have
+    the same key.
+
+    This will alter the first dictionary.  The returned result is dict1, but
+    it will have references to both dictionaries.  If you do not want this,
+    use union_new(), which is less efficient but data-safe.
+
+    >>> a = dict(a=dict(b=dict(c=1)))
+    >>> b = dict(a=dict(b=dict(d=2)),e=[1,2])
+    >>> # sorted json so that it is predictably the same
+    >>> import json
+    >>> json.dumps(union(a, b), sort_keys=True)
+    '{"a": {"b": {"c": 1, "d": 2}}, "e": [1, 2]}'
+    >>> json.dumps(a, sort_keys=True)
+    '{"a": {"b": {"c": 1, "d": 2}}, "e": [1, 2]}'
+    >>> json.dumps(b, sort_keys=True)
+    '{"a": {"b": {"d": 2}}, "e": [1, 2]}'
+    >>> a['e'][0] = 3
+    >>> json.dumps(a, sort_keys=True)
+    '{"a": {"b": {"c": 1, "d": 2}}, "e": [3, 2]}'
+    >>> json.dumps(b, sort_keys=True)
+    '{"a": {"b": {"d": 2}}, "e": [3, 2]}'
+    """
+    for key, value in dict2.items():
+        if key in dict1 and isinstance(value, dict):
+            dict1[key] = union(dict1[key], value)
+        else:
+            dict1[key] = value
+    return dict1
+
+################################################################################
+def union_new(dict1, dict2):
+    """
+    Deep merge of dict2 into dict1.  May be dictionaries or dictobj's.
+    Values in dict2 will replace values in dict1 where they vary but have
+    the same key.
+
+    Result is a new dictionary.  Less efficient than union()
+
+    If there are multiple pointers to same value, this will make multiple copies.
+
+    TODO: use a memory like deepcopy
+
+    >>> a = dict(a=dict(b=dict(c=1)))
+    >>> b = dict(a=dict(b=dict(d=2)),e=[1,2])
+    >>> # sorted json so that it is predictably the same
+    >>> import json
+    >>> a = union_new(a, b)
+    >>> json.dumps(a, sort_keys=True)
+    '{"a": {"b": {"c": 1, "d": 2}}, "e": [1, 2]}'
+    >>> json.dumps(b, sort_keys=True)
+    '{"a": {"b": {"d": 2}}, "e": [1, 2]}'
+    >>> a['e'][0] = 3
+    >>> json.dumps(a, sort_keys=True)
+    '{"a": {"b": {"c": 1, "d": 2}}, "e": [3, 2]}'
+    >>> json.dumps(b, sort_keys=True)
+    '{"a": {"b": {"d": 2}}, "e": [1, 2]}'
+    """
+    return _union_new(copy.deepcopy(dict1), dict2)
+
+################################################################################
+def _union_new(dict1, dict2):
+    """
+    Internal wrapper to keep one level of copying out of play, for efficiency.
+
+    Only copies data on dict2, but will alter dict1.
+    """
+
+    for key, value in dict2.items():
+        if key in dict1 and isinstance(value, dict):
+            dict1[key] = _union_new(dict1[key], value)
+        else:
+            dict1[key] = copy.deepcopy(value)
+    return dict1
+
+class Obj(dict):
+    """
+    Represent a dictionary in object form, while handling tokenizable keys, and
+    can export to original form.  Recursive.
+
+    Not python zen because it provides an alternate way to use dictionaries.
+    But I'm okay with this, becuase it is handy.
+
+    Limitations:
+
+       * raises error if there is a name conflict with reserved words
+       * reserves the prefix \f$\f for internal use (also raises error)
+       * because of namespace conflict problems, this is a deal breaker
+         for universal use--you must be cautious on what keys are input.
+
+    There are more elegant implementations to do similar things, but this
+    has better functionality and is more robust, imho.
+
+    >>> test_dict = {"\f$\fbogus":1}
+    >>> test_obj = Obj(**test_dict) # doctest: +ELLIPSIS
+    Traceback (most recent call last):
+     ...
+    ValueError: Key may not begin with \\f$\\f
+    >>> test_obj = Obj(copy='test') # doctest: +ELLIPSIS
+    Traceback (most recent call last):
+     ...
+    ValueError: Key 'copy' conflicts with reserved word
+    >>> test_dict = {"a":{"b":1,"ugly var!":2}, "c":3}
+    >>> test_obj = Obj(**test_dict)
+    >>> orig_obj = test_obj.copy() # test this later
+    >>> test_obj.keys()
+    ['a', 'c']
+    >>> 'a' in test_obj
+    True
+    >>> for key in test_obj:
+    ...     key
+    'a'
+    'c'
+    >>> test_obj.get('c')
+    3
+    >>> test_obj['c']
+    3
+    >>> test_obj.c
+    3
+    >>> test_obj.c = 4
+    >>> test_obj.c
+    4
+    >>> test_obj.a.b
+    1
+    >>> test_obj.a.ugly_var_
+    2
+    >>> test_obj.a['ugly var!']
+    2
+    >>> test_obj
+    {'a': {'b': 1, 'ugly var!': 2, 'ugly_var_': 2}, 'c': 4}
+    >>> test_obj.__original__() # "ugly var!" is back
+    {'a': {'b': 1, 'ugly var!': 2}, 'c': 4}
+    >>> test_obj.a.ugly_var_ = 10
+    >>> test_obj.a.ugly_var_
+    10
+    >>> orig_obj.__original__()
+    {'a': {'b': 1, 'ugly var!': 2}, 'c': 3}
+    """
+
+    __reserved__ = set(dir(dict) + ['dict', '__init__', '__repr__', '__export__',
+                                    '__iter__', '__contains__', 'copy', 'union',
+                                    '__reserved__'])
+
+    __getattr__ = dict.__getitem__
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
+    ############################################################################
+    # pylint: disable=super-init-not-called
+    def __init__(self, *args, **attrs):
+        if args:
+            if isinstance(args[0], zip):
+                attrs = dict(args[0])
+            elif isinstance(args[0], dict):
+                attrs = args[0]
+            else:
+                raise ValueError("Bad initialization of dicttools.obj")
+
+        for key in attrs:
+            if key[:3] == '\f$\f':
+                raise ValueError("Key may not begin with \\f$\\f")
+            newkey = re.sub(r'[^a-zA-Z0-9_]', '_', key)
+            if newkey in self.__reserved__:
+                raise ValueError("Key '{}' conflicts with reserved word".format(newkey))
+
+            value = attrs[key]
+            if isinstance(value, dict):
+                value = Obj(**value)
+            setattr(self, newkey, value)
+            if newkey != key: # set both
+                setattr(self, '\f$\f' + newkey, key)
+                setattr(self, key, value)
+
+    ############################################################################
+    def __original__(self):
+        """
+        Return original dictionary form, without rewritten keys
+        Alternate to self.__export__()
+        """
+        rewrite = {}
+        exported = {}
+        for key in self:
+            if key[:3] == '\f$\f':
+                rewrite[key[3:]] = self[key]
+            else:
+                value = self[key]
+                if isinstance(value, Obj):
+                    value = value.__original__()
+                exported[key] = value
+        for key in rewrite:
+            exported[rewrite[key]] = exported[key]
+            del exported[key]
+
+        return exported
+
+    ############################################################################
+    def __export__(self):
+        """
+        Export (removing internal keys) using rewritten key names, not original
+        keys.  For original keys, use self.__original__()
+        """
+        exported = {}
+        for key in self:
+            if key[:3] != "\f$\f":
+                value = self[key]
+                if isinstance(value, Obj):
+                    value = value.__export__()
+                exported[key] = value
+        return exported
+
+    ############################################################################
+    def copy(self):
+        return Obj(**self.__original__())
+
+    ############################################################################
+    def __repr__(self):
+        return str(self.__export__())
+
+    ############################################################################
+    def __deepcopy__(self, memo):
+        result = Obj(**self.__original__())
+        memo[id(self)] = result
+        return result
