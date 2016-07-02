@@ -1,5 +1,5 @@
 """
-Dictionary Tools
+Dictionary Utility Library
 
 Copyright 2016 Brandon Gillespie
 
@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import copy
 import re
 
-__version__ = 1.1
+__version__ = 1.0
 
 ################################################################################
 def dig(obj, key):
@@ -83,7 +83,7 @@ def union(dict1, dict2):
 
     This will alter the first dictionary.  The returned result is dict1, but
     it will have references to both dictionaries.  If you do not want this,
-    use union_new(), which is less efficient but data-safe.
+    use union_copy(), which is less efficient but data-safe.
 
     >>> a = dict(a=dict(b=dict(c=1)))
     >>> b = dict(a=dict(b=dict(d=2)),e=[1,2])
@@ -109,7 +109,7 @@ def union(dict1, dict2):
     return dict1
 
 ################################################################################
-def union_new(dict1, dict2):
+def union_copy(dict1, dict2):
     """
     Deep merge of dict2 into dict1.  May be dictionaries or dictobj's.
     Values in dict2 will replace values in dict1 where they vary but have
@@ -119,13 +119,11 @@ def union_new(dict1, dict2):
 
     If there are multiple pointers to same value, this will make multiple copies.
 
-    TODO: use a memory like deepcopy
-
     >>> a = dict(a=dict(b=dict(c=1)))
     >>> b = dict(a=dict(b=dict(d=2)),e=[1,2])
     >>> # sorted json so that it is predictably the same
     >>> import json
-    >>> a = union_new(a, b)
+    >>> a = union_copy(a, b)
     >>> json.dumps(a, sort_keys=True)
     '{"a": {"b": {"c": 1, "d": 2}}, "e": [1, 2]}'
     >>> json.dumps(b, sort_keys=True)
@@ -136,10 +134,10 @@ def union_new(dict1, dict2):
     >>> json.dumps(b, sort_keys=True)
     '{"a": {"b": {"d": 2}}, "e": [1, 2]}'
     """
-    return _union_new(copy.deepcopy(dict1), dict2)
+    return _union_copy(copy.deepcopy(dict1), dict2)
 
 ################################################################################
-def _union_new(dict1, dict2):
+def _union_copy(dict1, dict2):
     """
     Internal wrapper to keep one level of copying out of play, for efficiency.
 
@@ -148,7 +146,7 @@ def _union_new(dict1, dict2):
 
     for key, value in dict2.items():
         if key in dict1 and isinstance(value, dict):
-            dict1[key] = _union_new(dict1[key], value)
+            dict1[key] = _union_copy(dict1[key], value)
         else:
             dict1[key] = copy.deepcopy(value)
     return dict1
