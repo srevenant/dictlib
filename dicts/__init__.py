@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import copy
 import re
 
-__version__ = 1.0
+__version__ = 1.1
 
 ################################################################################
 def dig(obj, key):
