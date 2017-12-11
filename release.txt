@@ -1,0 +1,12 @@
+Notes to self:
+
+1. change version in setup.py
+2. re-run setup:
+
+    python3 setup.py sdist
+
+2. use twine to upload (settings are on myself)
+
+    pip3 install twine
+    twine upload dist/dictlib-...
+
