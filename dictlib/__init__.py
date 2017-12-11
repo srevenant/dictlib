@@ -232,7 +232,7 @@ class Obj(dict):
             elif isinstance(args[0], dict):
                 attrs = args[0]
             else:
-                raise ValueError("Bad initialization of dicttools.obj")
+                raise ValueError("Bad input for dictlib.Obj - not dict or zip")
 
         for key in attrs:
             if key[:3] == '\f$\f':

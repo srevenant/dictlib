@@ -1,6 +1,7 @@
 Various tools, including: 
 
-# union
+dictlib.union()
+===============
 
 	>>> dict3 = dictlib.union(dict1, dict2)
 	>>> dict3 = dictlib.union_copy(dict1, dict2)
@@ -12,7 +13,8 @@ This alters dict1, which is the returned result, but it will have references to
 both dictionaries.  If you do not want this, use union_copy(), which is less
 efficient but data-safe.
 
-# dig
+dictlib.dig()
+=============
 
 Recursively pull from a dictionary, using dot notation.
 
@@ -28,7 +30,8 @@ There is dig_get(), which behaves like dict.get (allows a default):
 	>>> dictlib.dig_get({"a":{"b":{"c":1}}}, "a.b.d", 2)
 	2
 
-# Obj
+dictlib.Obj()
+=============
 
 Represent a dictionary in object form, while handling tokenizable keys, and
 can export to original form.  Recursive.
@@ -41,11 +44,14 @@ Limitations:
 * raises error if there is a name conflict with reserved words
 * reserves the prefix \f$\f for internal use (raises error)
 * because of namespace conflict problems, this is a deal breaker for universal use--you must be cautious on what keys are input.
+* Two keys exist for each non-tokenized name, such as `ugly var!`, which is tokenized to `ugly_var_`.  While both exist, if exporting to original object only the value of the tokenized name is used.
 
 Examples:
 
+	>>> dictlib.Obj(key1=1, a=2)
+	{'key1': 1, 'a': 2}
     >>> test_dict = {"a":{"b":1,"ugly var!":2}, "c":3}
-    >>> test_obj = Obj(**test_dict)
+    >>> test_obj = dictlib.Obj(**test_dict)
     >>> orig_obj = test_obj.copy() # referenced later
     >>> test_obj.keys()
     ['a', 'c']
