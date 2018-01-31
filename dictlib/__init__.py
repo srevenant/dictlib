@@ -140,9 +140,9 @@ def union_setadd(dict1, dict2):
                 dict1[key2] = union_setadd(dict1[key2], val2)
             # if dict2 val2 is a list, things get uglier
             elif isinstance(val2, list):
-                dest = dict1[key2]
+                val1 = dict1[key2]
                 # both dict1/dict2 need to be lists
-                if not isinstance(dest, list):
+                if not isinstance(val1, list):
                     raise TypeError("dict1[{}] is not a list where dict2[{}] is.".format(key2, key2))
                 # ignore zero length val2 (string or list)
                 if not len(val2):
@@ -150,12 +150,15 @@ def union_setadd(dict1, dict2):
                 # if val2's first element is a dict, assume they are all dicts
                 if isinstance(val2[0], dict):
                     for xelem in range(0, len(val2)):
-                        dest[xelem] = union_setadd(dest[xelem], val2[xelem])
+                        if len(val1) <= xelem:
+                            val1[xelem] = union_setadd(val1[xelem], val2[xelem])
+                        else:
+                            val1.append(val2[xelem])
                 # otherwise just setadd the elements by value; order can get wonky
                 else:
                     for elem in val2:
-                        if elem not in dest: # inefficient
-                            dest.append(elem)
+                        if elem not in val1: # inefficient
+                            val1.append(elem)
             # any other type: just assign
             else:
                 dict1[key2] = val2

@@ -2,7 +2,7 @@ from distutils.core import setup
 setup(
   name = 'dictlib',
   packages = ['dictlib'],
-  version = '1.0.4',
+  version = '1.0.5',
   description = 'Yet another Dictionary Library including good deep merge and dictionary as objects',
   author = 'Brandon Gillespie',
   author_email = 'bjg-pypi@cold.org',
