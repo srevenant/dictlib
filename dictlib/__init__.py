@@ -81,6 +81,8 @@ def union(dict1, dict2):
     Values in dict2 will replace values in dict1 where they vary but have
     the same key.
 
+    When lists are encountered, the dict2 list will replace the dict1 list.
+
     This will alter the first dictionary.  The returned result is dict1, but
     it will have references to both dictionaries.  If you do not want this,
     use union_copy(), which is less efficient but data-safe.
@@ -106,6 +108,60 @@ def union(dict1, dict2):
             dict1[key] = union(dict1[key], value)
         else:
             dict1[key] = value
+    return dict1
+
+################################################################################
+def union_setadd(dict1, dict2):
+    """
+    Similar to dictlib.union(), but following a setadd logic (with strings and ints),
+    and a union (with dictionaries).  Assumption is that all elements of the list
+    are of the same type (i.e. if first element is a dict, it tries to union all
+    elements)
+
+    NOT data safe, it mangles both dict1 and dict2
+
+    >>> a = dict(a=[{"b":1, "c":2},{"a":1}], b=dict(z=dict(y=1)), e=[1])
+    >>> b = dict(a=[{"b":1, "d":3}], b=dict(z=dict(y=-1)), e=[1,2])
+    >>> # sorted json so that it is predictably the same
+    >>> import json
+    >>> json.dumps(union_setadd(a, b), sort_keys=True)
+    '{"a": [{"b": 1, "c": 2, "d": 3}, {"a": 1}], "b": {"z": {"y": -1}}, "e": [1, 2]}'
+    >>> a['a'][0]["d"] = 4
+    >>> json.dumps(b, sort_keys=True)
+    '{"a": [{"b": 1, "d": 3}], "b": {"z": {"y": -1}}, "e": [1, 2]}'
+    >>> json.dumps(a, sort_keys=True)
+    '{"a": [{"b": 1, "c": 2, "d": 4}, {"a": 1}], "b": {"z": {"y": -1}}, "e": [1, 2]}'
+    """
+    for key2, val2 in dict2.items():
+        # if key is in both places, do a union
+        if key2 in dict1:
+            # if dict2 val2 is a dict, assume dict1 val2 is as well
+            if isinstance(val2, dict):
+                dict1[key2] = union_setadd(dict1[key2], val2)
+            # if dict2 val2 is a list, things get uglier
+            elif isinstance(val2, list):
+                dest = dict1[key2]
+                # both dict1/dict2 need to be lists
+                if not isinstance(dest, list):
+                    raise TypeError("dict1[{}] is not a list where dict2[{}] is.".format(key2, key2))
+                # ignore zero length val2 (string or list)
+                if not len(val2):
+                    continue
+                # if val2's first element is a dict, assume they are all dicts
+                if isinstance(val2[0], dict):
+                    for xelem in range(0, len(val2)):
+                        dest[xelem] = union_setadd(dest[xelem], val2[xelem])
+                # otherwise just setadd the elements by value; order can get wonky
+                else:
+                    for elem in val2:
+                        if elem not in dest: # inefficient
+                            dest.append(elem)
+            # any other type: just assign
+            else:
+                dict1[key2] = val2
+        # or just define it
+        else:
+            dict1[key2] = val2
     return dict1
 
 ################################################################################
