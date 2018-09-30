@@ -24,6 +24,32 @@ import re
 __version__ = 1.0
 
 ################################################################################
+rx_index = re.compile(r'(.*)\[(\d+)\]$')
+
+def _splice_index(*key):
+    """
+    Utility for key management in dig/dug
+
+    If first elem of key list contains an index[], spread it out as a second
+    numeric index.
+
+    >>> _splice_index('abc[0]', 'def')
+    ('abc', 0, 'def')
+    >>> _splice_index('abc[a]', 'def')
+    ('abc[a]', 'def')
+    >>> _splice_index('abc[200]', 'def')
+    ('abc', 200, 'def')
+    >>> _splice_index('abc', 'def')
+    ('abc', 'def')
+    >>> _splice_index(0, 'abc', 'def')
+    (0, 'abc', 'def')
+    """
+    if isinstance(key[0], str):
+        result = rx_index.search(key[0])
+        if result:
+            return tuple([result.group(1), int(result.group(2))] + list(key[1:]))
+    return key
+
 def dig(obj, key):
     """
     Recursively pull from a dictionary, using dot notation.  See also: dig_get
@@ -41,6 +67,8 @@ def _dig(obj, *key):
     >>> _dig({"a":{"b":{"c":1}}}, "a", "b", "c")
     1
     """
+    key = _splice_index(*key)
+
     if len(key) == 1:
         return obj[key[0]]
     return _dig(obj[key[0]], *key[1:])
@@ -54,6 +82,8 @@ def dig_get(obj, key, *default):
     >>> dig_get({"a":{"b":{"c":1}}}, "a.b.d")
     >>> dig_get({"a":{"b":{"c":1}}}, "a.b.d", 2)
     2
+    >>> dig_get({"a":{"b":[{"c":1},{"d":4}]}}, "a.b[1].d", 2)
+    4
     """
     array = key.split(".")
     if default:
@@ -70,9 +100,39 @@ def _dig_get(obj, default, *key):
     >>> _dig_get({"a":{"b":{"c":1}}}, 2, "a", "b", "d")
     2
     """
+    key = _splice_index(*key)
+
     if len(key) == 1:
-        return obj.get(key[0], default)
-    return _dig_get(obj.get(key[0], {}), default, *key[1:])
+        if isinstance(key[0], str):
+            return obj.get(key[0], default)
+        else:
+            try:
+                return obj[key[0]]
+            except IndexError:
+                return default
+
+    return _dig_get(obj[key[0]], default, *key[1:])
+
+def dug(obj, key, value):
+    """
+    Inverse of dig: recursively set a value in a dictionary, using
+    dot notation.
+
+    >>> test = {"a":{"b":{"c":1}}}
+    >>> dug(test, "a.b.c", 10)
+    >>> test
+    {'a': {'b': {'c': 10}}}
+    """
+    array = key.split(".")
+    return _dug(obj, value, *array)
+
+def _dug(obj, value, *key):
+    key = _splice_index(*key)
+
+    if len(key) == 1:
+        obj[key[0]] = value
+    else:
+        _dug(obj[key[0]], value, *key[1:])
 
 ################################################################################
 def union(dict1, dict2):
@@ -242,7 +302,7 @@ class Obj(dict):
     >>> test_obj = Obj(**test_dict)
     >>> orig_obj = test_obj.copy() # test this later
     >>> test_obj.keys()
-    ['a', 'c']
+    dict_keys(['a', 'c'])
     >>> 'a' in test_obj
     True
     >>> for key in test_obj:
@@ -264,8 +324,9 @@ class Obj(dict):
     2
     >>> test_obj.a['ugly var!']
     2
-    >>> test_obj
-    {'a': {'b': 1, 'ugly var!': 2, 'ugly_var_': 2}, 'c': 4}
+    >>> import json
+    >>> json.dumps(test_obj, sort_keys=True)
+    '{"a": {"\\\\f$\\\\fugly_var_": "ugly var!", "b": 1, "ugly var!": 2, "ugly_var_": 2}, "c": 4}'
     >>> test_obj.__original__() # "ugly var!" is back
     {'a': {'b': 1, 'ugly var!': 2}, 'c': 4}
     >>> test_obj.a.ugly_var_ = 10
