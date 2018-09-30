@@ -20,15 +20,28 @@ Recursively pull from a dictionary, using dot notation.
 
 	>>> dictlib.dig({"a":{"b":{"c":1}}}, "a.b.c")
 	1
+	>>> dictlib.dig({"a":{"b":[{"c":1},{"d":2}]}}, "a.b[1].d")
+	2
 	>>> dictlib.dig({"a":{"b":{"c":1}}}, "a.b.d")
 	Traceback:...
 
-There is dig_get(), which behaves like dict.get (allows a default):
+There is also dig_get(), which allows for a default, similar to dict.get:
 
 	>>> dictlib.dig_get({"a":{"b":{"c":1}}}, "a.b.c", 2)
 	1
 	>>> dictlib.dig_get({"a":{"b":{"c":1}}}, "a.b.d", 2)
 	2
+
+dictlib.dug()
+=============
+
+Inverse of dig, puts an item into a nested dictionary, using dot notation.
+This does not behave functionally, it alters the origin dictionary.
+
+	>>> test = {"a":{"b":{"c":1}}}
+    >>> dug(test, "a.b.c", 200)
+    >>> test
+	{'a': {'b': {'c': 200}}}
 
 dictlib.Obj()
 =============
