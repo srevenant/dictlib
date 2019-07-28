@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
   name = 'dictlib',
   packages = ['dictlib'],
-  version = '1.1.2',
+  version = '1.1.3',
   description = 'Dictionary Library including good deep merge and dictionary as objects',
   long_description = long_description,
   long_description_content_type = 'text/markdown',
