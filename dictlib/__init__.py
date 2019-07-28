@@ -24,7 +24,7 @@ import re
 __version__ = 1.0
 
 ################################################################################
-rx_index = re.compile(r'(.*)\[(\d+)\]$')
+RX_INDEX = re.compile(r'(.*)\[(\d+)\]$')
 
 def _splice_index(*key):
     """
@@ -45,7 +45,7 @@ def _splice_index(*key):
     (0, 'abc', 'def')
     """
     if isinstance(key[0], str):
-        result = rx_index.search(key[0])
+        result = RX_INDEX.search(key[0])
         if result:
             return tuple([result.group(1), int(result.group(2))] + list(key[1:]))
     return key
@@ -90,28 +90,35 @@ def dig_get(obj, key, *default):
         default = default[0]
     else:
         default = None
-    return _dig_get(obj, default, *array)
+    try:
+        return _dig_get(obj, default, *array)
+    except (KeyError, AttributeError):
+        return default
+
+def _dig_get_elem(obj, key, default):
+    try:
+        return obj[key]
+    except (IndexError, KeyError):
+        return default
 
 def _dig_get(obj, default, *key):
     """
     Recursively lookup an item in a nested dictionary,
-    using an array of indexes
+    using an array of indexes, with a default value
 
     >>> _dig_get({"a":{"b":{"c":1}}}, 2, "a", "b", "d")
     2
+    >>> _dig_get({"a":{"b":{"c":1}}}, 2, "a", "b", "c")
+    1
+    >>> _dig_get({"a":{"b":{"c":1}}}, 0, "a", "z", "c")
+    0
     """
     key = _splice_index(*key)
-
+    if not obj:
+        return default
     if len(key) == 1:
-        if isinstance(key[0], str):
-            return obj.get(key[0], default)
-        else:
-            try:
-                return obj[key[0]]
-            except IndexError:
-                return default
-
-    return _dig_get(obj[key[0]], default, *key[1:])
+        return _dig_get_elem(obj, key[0], default)
+    return _dig_get(_dig_get_elem(obj, key[0], default), default, *key[1:])
 
 def dug(obj, key, value):
     """
@@ -120,6 +127,7 @@ def dug(obj, key, value):
 
     >>> test = {"a":{"b":{"c":1}}}
     >>> dug(test, "a.b.c", 10)
+    True
     >>> test
     {'a': {'b': {'c': 10}}}
     """
@@ -129,10 +137,13 @@ def dug(obj, key, value):
 def _dug(obj, value, *key):
     key = _splice_index(*key)
 
+    # pylint: disable=no-else-return
     if len(key) == 1:
         obj[key[0]] = value
-    else:
-        _dug(obj[key[0]], value, *key[1:])
+        return True
+    elif not key[0] in obj:
+        obj[key[0]] = {}
+    return _dug(obj[key[0]], value, *key[1:])
 
 ################################################################################
 def union(dict1, dict2):
@@ -171,6 +182,7 @@ def union(dict1, dict2):
     return dict1
 
 ################################################################################
+# pylint: disable=too-many-branches
 def union_setadd(dict1, dict2):
     """
     Similar to dictlib.union(), but following a setadd logic (with strings and ints),
@@ -192,7 +204,7 @@ def union_setadd(dict1, dict2):
     >>> json.dumps(a, sort_keys=True)
     '{"a": [{"b": 1, "c": 2, "d": 4}, {"a": 1}], "b": {"z": {"y": -1}}, "e": [1, 2]}'
     """
-    for key2, val2 in dict2.items():
+    for key2, val2 in dict2.items(): # pylint: disable=too-many-nested-blocks
         # if key is in both places, do a union
         if key2 in dict1:
             # if dict2 val2 is a dict, assume dict1 val2 is as well
@@ -203,13 +215,14 @@ def union_setadd(dict1, dict2):
                 val1 = dict1[key2]
                 # both dict1/dict2 need to be lists
                 if not isinstance(val1, list):
-                    raise TypeError("dict1[{}] is not a list where dict2[{}] is.".format(key2, key2))
+                    raise TypeError("dict1[{key}] is not a list where dict2[{key}] is."
+                                    .format(key=key2))
                 # ignore zero length val2 (string or list)
-                if not len(val2):
+                if not val2:
                     continue
                 # if val2's first element is a dict, assume they are all dicts
                 if isinstance(val2[0], dict):
-                    for xelem in range(0, len(val2)):
+                    for xelem in range(0, len(val2)): # pylint: disable=consider-using-enumerate
                         if xelem < len(val1):
                             val1[xelem] = union_setadd(val1[xelem], val2[xelem])
                         else:
@@ -271,7 +284,7 @@ def _union_copy(dict1, dict2):
             dict1[key] = copy.deepcopy(value)
     return dict1
 
-class Obj(dict):
+class Dict(dict):
     """
     Represent a dictionary in object form, while handling tokenizable keys, and
     can export to original form.  Recursive.
@@ -420,3 +433,6 @@ class Obj(dict):
         result = Obj(**self.__original__())
         memo[id(self)] = result
         return result
+
+# backwards compatability
+Obj = Dict

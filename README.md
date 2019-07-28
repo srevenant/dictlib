@@ -1,4 +1,4 @@
-Various tools, including: 
+Various tools, including:
 
 dictlib.union()
 ===============
@@ -43,14 +43,14 @@ This does not behave functionally, it alters the origin dictionary.
     >>> test
 	{'a': {'b': {'c': 200}}}
 
-dictlib.Obj()
+dictlib.Dict()
 =============
 
 Represent a dictionary in object form, while handling tokenizable keys, and
 can export to original form.  Recursive.
 
 Not python zen because it provides an alternate way to use dictionaries.
-But I'm okay with this, becuase it is handy.
+But I'm okay with this, because it is handy.
 
 Limitations:
 
@@ -61,10 +61,10 @@ Limitations:
 
 Examples:
 
-	>>> dictlib.Obj(key1=1, a=2)
+	>>> dictlib.Dict(key1=1, a=2)
 	{'key1': 1, 'a': 2}
     >>> test_dict = {"a":{"b":1,"ugly var!":2}, "c":3}
-    >>> test_obj = dictlib.Obj(**test_dict)
+    >>> test_obj = dictlib.Dict(**test_dict)
     >>> orig_obj = test_obj.copy() # referenced later
     >>> test_obj.keys()
     ['a', 'c']
@@ -88,3 +88,4 @@ Examples:
     >>> test_obj.__original__()
     {'a': {'b': 1, 'ugly var!': 2}, 'c': 4}
 
+Note: This was previously Obj(), which has been deprecated but is still supported.
