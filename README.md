@@ -12,7 +12,7 @@ class NewClass(Dict):
   pass
 ```
 
-`union()` and `union_copy()`
+union() and union_copy()
 ===============
 
 ```python
@@ -28,7 +28,7 @@ This alters dict1, which is the returned result, but it will have references to
 both dictionaries.  If you do not want this, use union_copy(), which is less
 efficient but data-safe.
 
-`dig()` and `dig_get()`
+dig() and dig_get()
 =============
 
 Recursively pull from a dictionary, using dot notation.  dig_get behaves like `dict.get()`, but with dot-notated keys.
@@ -52,7 +52,7 @@ dig_get(dict1, "a.b.z", 2)
 # 2
 ```
 
-`dug()`
+dug()
 =============
 
 Inverse of `dig()`, `dug()` puts an item into a nested dictionary, using dot notation.
@@ -82,7 +82,7 @@ dug(dict1, "a.b.d[0].e", True)
 
 (PR's to finish this feature correctly are appreciated)
 
-`Dict()`
+Dict()
 =============
 
 A bit of sugar to represent a dictionary in object form where keys are set as
@@ -171,15 +171,21 @@ test_obj.__original__()
 
 Note: `Dict()` was previously `Obj()`, which has been deprecated but is still supported.
 
-`dictlib.export()` and `dictlib.original()`
+dictlib.original() and dictlib.export()
 ======
 
 Walk `dict1` which may be mixed dict()/Dict() and export any Dict()'s to dict(),
-using the `Dict.__export__()` or `Dict.__original__()` method, respectively.
+using the `Dict.__original__()` or `Dict.__export__()` method, respectively.
 
 (useful for data conversions, such as with dict->yaml)
-
 ```python
-dictlib.export(dictlib.Dict(first=1, second=dict(tres=dictlib.Dict(nachos=2))))
-{'first': 1, 'second': {'tres': {'nachos': 2}}}
+import json
+export(Dict({"ugly first": 1, "second": {"tres": Dict({"nachos":2})}}))
+# {'ugly_first': 1, 'ugly first': 1, 'second': {'tres': {'nachos': 2}}}
+
+json.dumps(Dict({"ugly first": 1, "second": {"tres": Dict({"nachos":2})}}))
+# '{"ugly_first": 1, "\\\\f$\\\\fugly_first": "ugly first", "ugly first": 1, "second": {"tres": {"nachos": 2}}}'
+
+json.dumps(export(Dict({"ugly first": 1, "second": {"tres": Dict({"nachos":2})}})))
+# '{"ugly_first": 1, "ugly first": 1, "second": {"tres": {"nachos": 2}}}'
 ```

@@ -284,6 +284,74 @@ def _union_copy(dict1, dict2):
             dict1[key] = copy.deepcopy(value)
     return dict1
 
+################################################################################
+# pylint: disable=line-too-long
+def export(dict1):
+    '''
+    Walk `dict1` which may be mixed dict()/Dict() and export any Dict()'s to dict()
+
+    Exporting: remove internal mapping keys (\\f$\\f) but keep split keys that are tokenized
+    Original: remove internal mapping keys (\\f$\\f) and split keys that are tokenized
+
+    see also: dictlib.original()
+
+    >>> export(Dict(first=1, second=dict(tres=Dict(nachos=2))))
+    {'first': 1, 'second': {'tres': {'nachos': 2}}}
+
+    >>> import json
+    >>> export(Dict({"ugly first": 1, "second": {"tres": Dict({"nachos":2})}}))
+    {'ugly_first': 1, 'ugly first': 1, 'second': {'tres': {'nachos': 2}}}
+
+    >>> json.dumps(Dict({"ugly first": 1, "second": {"tres": Dict({"nachos":2})}}))
+    '{"ugly_first": 1, "\\\\f$\\\\fugly_first": "ugly first", "ugly first": 1, "second": {"tres": {"nachos": 2}}}'
+
+    >>> json.dumps(export(Dict({"ugly first": 1, "second": {"tres": Dict({"nachos":2})}})))
+    '{"ugly_first": 1, "ugly first": 1, "second": {"tres": {"nachos": 2}}}'
+    '''
+    if isinstance(dict1, Dict):
+        dict1 = dict1.__export__()
+    for key, value in dict1.items():
+        if isinstance(value, Dict):
+            dict1[key] = value.__export__()
+        elif isinstance(value, dict):
+            dict1[key] = export(value)
+    return dict1
+
+################################################################################
+# pylint: disable=line-too-long
+def original(dict1):
+    """
+    Walk `dict1` which may be mixed dict()/Dict() and call Dict.__original__() on
+    any Dicts.
+
+    Exporting: remove internal mapping keys (\\f$\\f) but keep split keys that are tokenized
+    Original: remove internal mapping keys (\\f$\\f) and split keys that are tokenized
+
+    see also: dictlib.original()
+
+    >>> export(Dict(first=1, second=dict(tres=Dict(nachos=2))))
+    {'first': 1, 'second': {'tres': {'nachos': 2}}}
+
+    >>> import json
+    >>> original(Dict({"ugly first": 1, "second": {"tres": Dict({"nachos":2})}}))
+    {'ugly first': 1, 'second': {'tres': {'nachos': 2}}}
+
+    >>> json.dumps(Dict({"ugly first": 1, "second": {"tres": Dict({"nachos":2})}}))
+    '{"ugly_first": 1, "\\\\f$\\\\fugly_first": "ugly first", "ugly first": 1, "second": {"tres": {"nachos": 2}}}'
+
+    >>> json.dumps(original(Dict({"ugly first": 1, "second": {"tres": Dict({"nachos":2})}})))
+    '{"ugly first": 1, "second": {"tres": {"nachos": 2}}}'
+    """
+    if isinstance(dict1, Dict):
+        dict1 = dict1.__original__()
+    for key, value in dict1.items():
+        if isinstance(value, Dict):
+            dict1[key] = value.__original__()
+        elif isinstance(value, dict):
+            dict1[key] = original(value)
+    return dict1
+
+################################################################################
 class Dict(dict):
     """
     Represent a dictionary in object form, while handling tokenizable keys, and
