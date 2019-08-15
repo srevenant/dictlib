@@ -1,16 +1,30 @@
-Dictlib is a lightweight add-on for dictionaries, primarily focused on:
+Dictlib is a lightweight add-on for dictionaries, featuring:
 
-  * Minimal changes/efficiency
   * *Dictionary union* done properly: `union()` (not immutably safe), `union_copy()` (immutably safe)
-  * *Dot notation for retrieval* from classic dictionaries, with a string key: `dig()`, `dig_get()`, `dug()`
-  * *dictionary keys as object attributes* (easy classes): `Dict()` (useful for rapid prototyping,
+  * *`"String.dot"` notation for retrieval* from classic dictionaries, with a string key: `dig()`, `dig_get()`, `dug()`.  For efficiencies sake, it isn't an object.  If you want dot notation more commonly used in your code, use `Dict()` instead.
+  * *`Object.key` Dictionary keys as object attributes* (easy classes): `Dict()` (useful for rapid prototyping,
     just define your class as a Dict, either way:
+  * balancing features with performance: we could do more (such as supporting dictionary['this.key'] inline dot notation), but I wanted to 
+    keep it near native performance, and having an external function like `dig()` is similar to Ruby's method, so you can use it as needed,
+    and if you really want dot notation, use an inline method that is efficient at runtime like `Dict()`
 
 ```python
 NewClass = Dict
 class NewClass(Dict):
   pass
 ```
+
+If this doesn't work for you, consider other dictionary helper libraries:
+
+  * [Scalpl](https://github.com/ducdetronquito/scalpl)
+    - a more indepth tool that does similar to `dictlib.dig()` and `dictlib.dug()`
+    - does not include keys as object attributes -- `Dict()`
+  * [Addict](https://github.com/mewwts/addict) 
+    - similar to `addict.Dict()` and `dictlib.Dict()`
+    - As time allows I'll add a better comparison
+  * [Box](https://github.com/cdgriffith/Box )
+    - similar to `addict.Dict()` and `dictlib.Dict()`
+    - As time allows I'll add a better comparison
 
 union() and union_copy()
 ===============
